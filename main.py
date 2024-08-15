@@ -46,22 +46,15 @@ encrypter_password = "filesaver"
 
 # Функция, отвечающая за шифрование строки методом XOR
 def crypto_xor(message: str, secret: str) -> str:
-	new_chars = list()
-	i = 0
-
-	for num_chr in (ord(c) for c in message):
-		num_chr ^= ord(secret[i])
-		new_chars.append(num_chr)
-
-		i += 1
-		if i >= len(secret):
-			i = 0
-
-	return ''.join(chr(c) for c in new_chars)
+    out = ""
+    secret_len = len(secret)
+    for i in range(len(message)):
+        out += ord(message[i]) ^ ord(secret[i % secret_len])
+    return out
 
 # Функция, отвечающая за сжатие строки байтовым способом
 def compress(data):
-	# Преобразуем шестнадцатеричную строку в байты
+	# Преобразуеместнадцатеричную строку в байты
 	bytes_data = bytes.fromhex(data)
 	# Кодируем в base64 и убираем padding
 	encoded = base64.b64encode(bytes_data).decode().rstrip('=')
