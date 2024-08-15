@@ -53,7 +53,7 @@ def crypto_xor(message: str, secret: str) -> str:
     return out
 
 # Функция, отвечающая за сжатие строки байтовым способом
-def compress(data):
+def compress(data: str) -> str:
 	# Преобразуеместнадцатеричную строку в байты
 	bytes_data = bytes.fromhex(data)
 	# Кодируем в base64 и убираем padding
@@ -61,7 +61,7 @@ def compress(data):
 	return encoded
 
 # Функция, отвечающая за расжатие строки байтовым способом
-def decompress(compressed_data):
+def decompress(compressed_data: str) -> str:
 	print(compressed_data)
 	# Добавляем padding для base64 декодирования
 	padding = '=' * ((4 - len(compressed_data) % 4) % 4)
