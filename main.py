@@ -54,7 +54,7 @@ def crypto_xor(message: str, secret: str) -> str:
 
 # Функция, отвечающая за сжатие строки байтовым способом
 def compress(data: str) -> str:
-	# Преобразуеместнадцатеричную строку в байты
+	# Преобразуем шестнадцатеричную строку в байты
 	bytes_data = bytes.fromhex(data)
 	# Кодируем в base64 и убираем padding
 	encoded = base64.b64encode(bytes_data).decode().rstrip('=')
@@ -149,6 +149,73 @@ async def upload_file(life: str, files: List[UploadFile]):
 	cursor.close()
 	# Возвращаем зашифрованное сжатое имя директории
 	return compress(encrypt_xor(str(new_name), encrypter_password))
+
+@v1_router.post("/add_files")
+async def add_files(id: str, files: List[UploadFile]):
+	# Приём файлов, их сохранение и обработка
+	global connection
+	if len(id) <= 0:
+		# Если id пустой - возврат 404
+		return 404
+	else:
+		# Расшифровываем переданный ID директории для получения настоящего значения
+		id = decrypt_xor(decompress(str(id)), encrypter_password)
+		print(id)
+
+		path = f"uploaded/{id}"
+		# Проверяем, что директория существует
+		if os.path.isdir(path):
+			try:
+				connection.ping(reconnect=True)
+			except:
+				pass
+			# Инициализируем курсор для работы с базой данных
+			cursor = connection.cursor(dictionary=True, buffered=True)
+			for file in files:
+				# Дозагружаем файлы
+				type_file = "file"
+				for ext in image_formats:
+					# Проверка, что файл - изображение
+					if ext in file.filename:
+						type_file = "image"
+						break
+				for ext in video_formats:
+					# Проверка, что файл - видео
+					if ext in file.filename:
+						type_file = "video"
+						break
+				if accept_only_media:
+					# Отсекаем не медиа файлы и создаем их
+					if type_file != "file":
+						async with aiofiles.open(f"{path}/{file.filename}", 'wb') as out_file:
+							content = await file.read()  # async read
+							await out_file.write(content)  # async write
+							try:
+								# Заносим файл в таблицу для последующего сжатия и обработки
+								cursor.execute(f"INSERT INTO `processing_queue` (`dir_id`, `filename`) VALUES ('{new_name}', '{file.filename}')")
+							except:
+								pass
+				else:
+					async with aiofiles.open(f"{path}/{file.filename}", 'wb') as out_file:
+						# Создаем все файлы
+						content = await file.read()  # async read
+						await out_file.write(content)  # async write
+						if type_file != "file":
+							# Проверка, что файл - медиа
+							try:
+								# Заносим файл в таблицу для последующего сжатия и обработки
+								cursor.execute(f"INSERT INTO `processing_queue` (`dir_id`, `filename`) VALUES ('{new_name}', '{file.filename}')")
+							except:
+								pass
+
+			# Коммитим изменения в базу и закрываем текущий курсор
+			connection.commit()
+			cursor.close()
+			# Возвращаем зашифрованное сжатое имя директории
+			return JSONResponse(status_code=200, content="Succesfull")
+		else:
+			return JSONResponse(status_code=404, content="Error")
+
 @v1_router.get("/get_info")
 async def get_info(id: str, view: bool = False):
 	# Получение информации о загруженной директории и её файлах
@@ -158,7 +225,7 @@ async def get_info(id: str, view: bool = False):
 		# Если id пустой - возврат 404
 		return 404
 	else:
-		# Расшифровываем переданный ID директории получения настоящего значения
+		# Расшифровываем переданный ID директории для получения настоящего значения
 		id = decrypt_xor(decompress(str(id)), encrypter_password)
 		print(id)
 
