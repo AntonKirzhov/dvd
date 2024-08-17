@@ -94,7 +94,7 @@ async def on_startup():
 	app.include_router(v1_router)
 
 @v1_router.post("/upload_file")
-async def upload_file(life: str, files: List[UploadFile]):
+async def upload_file(life: str, compress: bool,bfiles: List[UploadFile]):
 	# Приём файлов, их сохранение и обработка
 	global connection
 	existing_folders = os.listdir("uploaded")
@@ -103,7 +103,7 @@ async def upload_file(life: str, files: List[UploadFile]):
 	# Цикл проверки имени на уникальность
 	while new_name in existing_folders:
 		new_name = random.randint(0,999999999)
-	# Создаем директорию
+	# Создаем директорию,
 	os.mkdir(f"uploaded/{new_name}")
 	try:
 		connection.ping(reconnect=True)
@@ -133,17 +133,18 @@ async def upload_file(life: str, files: List[UploadFile]):
 				async with aiofiles.open(f"uploaded/{new_name}/{file.filename}", 'wb') as out_file:
 					content = await file.read()  # async read
 					await out_file.write(content)  # async write
-					try:
-						# Заносим файл в таблицу для последующего сжатия и обработки
-						cursor.execute(f"INSERT INTO `processing_queue` (`dir_id`, `filename`) VALUES ('{new_name}', '{file.filename}')")
-					except:
-						pass
+                    if compress:
+					    try:
+						    # Заносим файл в таблицу для последующего сжатия и обработки
+						    cursor.execute(f"INSERT INTO `processing_queue` (`dir_id`, `filename`) VALUES ('{new_name}', '{file.filename}')")
+					    except:
+						    pass
 		else:
 			async with aiofiles.open(f"uploaded/{new_name}/{file.filename}", 'wb') as out_file:
 				# Создаем все файлы
 				content = await file.read()  # async read
 				await out_file.write(content)  # async write
-				if type_file != "file":
+				if type_file != "file" and compress:
 					# Проверка, что файл - медиа
 					try:
 						# Заносим файл в таблицу для последующего сжатия и обработки
