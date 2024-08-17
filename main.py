@@ -94,7 +94,7 @@ async def on_startup():
 	app.include_router(v1_router)
 
 @v1_router.post("/upload_file")
-async def upload_file(life: str, compress: bool,bfiles: List[UploadFile]):
+async def upload_file(life: str, compress: bool, files: List[UploadFile]):
 	# Приём файлов, их сохранение и обработка
 	global connection
 	existing_folders = os.listdir("uploaded")
