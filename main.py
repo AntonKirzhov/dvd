@@ -117,30 +117,14 @@ async def upload_file(life: str, compress: bool, files: List[UploadFile]):
 	for file in files:
 		# Создаем файлы
 		type_file = "file"
-		for ext in image_formats:
-			# Проверка, что файл - изображение
-			if ext in file.filename:
-				type_file = "image"
-				break
-		for ext in video_formats:
-			# Проверка, что файл - видео
-			if ext in file.filename:
-				type_file = "video"
-				break
-		if accept_only_media:
-			# Отсекаем не медиа файлы и создаем их
-			if type_file != "file":
-				async with aiofiles.open(f"uploaded/{new_name}/{file.filename}", 'wb') as out_file:
-					content = await file.read()  # async read
-					await out_file.write(content)  # async write
-                    if compress and not ".gif" in file.filename:
-					    try:
-						    # Заносим файл в таблицу для последующего сжатия и обработки
-						    cursor.execute(f"INSERT INTO `processing_queue` (`dir_id`, `filename`) VALUES ('{new_name}', '{file.filename}')")
-					    except:
-						    pass
-		else:
-			async with aiofiles.open(f"uploaded/{new_name}/{file.filename}", 'wb') as out_file:
+		if file.filename.endswith(tuple(image_formats)):
+			type_file = "image"
+		if file.filename.endswith(tuple(video_formats)):
+			type_file = "video"
+			break
+		if accept_only_media and type_file != file:
+            continue
+		async with aiofiles.open(f"uploaded/{new_name}/{file.filename}", 'wb') as out_file:
 				# Создаем все файлы
 				content = await file.read()  # async read
 				await out_file.write(content)  # async write
@@ -182,40 +166,24 @@ async def add_files(id: str, files: List[UploadFile]):
 			for file in files:
 				# Дозагружаем файлы
 				type_file = "file"
-				for ext in image_formats:
-					# Проверка, что файл - изображение
-					if ext in file.filename:
-						type_file = "image"
-						break
-				for ext in video_formats:
-					# Проверка, что файл - видео
-					if ext in file.filename:
-						type_file = "video"
-						break
-				if accept_only_media:
+				# Проверка, что файл - изображение
+				if ext in file.filename.endswith(tuple(image_formats)):
+					type_file = "image"
+				# Проверка, что файл - видео
+				if ext in file.filename.endswith(tuple(video_formats)):
+					type_file = "video"
+				if accept_only_media and type_file == file:
 					# Отсекаем не медиа файлы и создаем их
-					if type_file != "file":
-						async with aiofiles.open(f"{path}/{file.filename}", 'wb') as out_file:
-							content = await file.read()  # async read
-							await out_file.write(content)  # async write
-							try:
-								# Заносим файл в таблицу для последующего сжатия и обработки
-								cursor.execute(f"INSERT INTO `processing_queue` (`dir_id`, `filename`) VALUES ('{new_name}', '{file.filename}')")
-							except:
-								pass
-				else:
-					async with aiofiles.open(f"{path}/{file.filename}", 'wb') as out_file:
-						# Создаем все файлы
-						content = await file.read()  # async read
-						await out_file.write(content)  # async write
-						if type_file != "file":
-							# Проверка, что файл - медиа
-							try:
-								# Заносим файл в таблицу для последующего сжатия и обработки
-								cursor.execute(f"INSERT INTO `processing_queue` (`dir_id`, `filename`) VALUES ('{new_name}', '{file.filename}')")
-							except:
-								pass
-
+                    continue
+				async with aiofiles.open(f"{path}/{file.filename}", 'wb') as out_file:
+					content = await file.read()  # async read
+					await out_file.write(content)  # async write
+                    if type_file != file:
+					    try:
+						    # Заносим файл в таблицу для последующего сжатия и обработки
+						    cursor.execute(f"INSERT INTO `processing_queue` (`dir_id`, `filename`) VALUES ('{new_name}', '{file.filename}')")
+					    except:
+						    pass
 			# Коммитим изменения в базу и закрываем текущий курсор
 			connection.commit()
 			cursor.close()
