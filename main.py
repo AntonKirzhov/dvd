@@ -121,7 +121,7 @@ async def upload_file(life: str, compress: bool, files: List[UploadFile]):
 				# Создаем все файлы
 				content = await file.read()  # async read
 				await out_file.write(content)  # async write
-				if type_file != "file" and compress and not ".gif" in file.filename:
+				if type_file != "file" and compress and not file.filename.endswith(".gif"):
 					# Проверка, что файл - медиа
 					try:
 						# Заносим файл в таблицу для последующего сжатия и обработки
@@ -171,7 +171,7 @@ async def add_files(id: str, files: List[UploadFile]):
 				async with aiofiles.open(f"{path}/{file.filename}", 'wb') as out_file:
 					content = await file.read()  # async read
 					await out_file.write(content)  # async write
-                    if type_file != file:
+                    if type_file != file and not file.filename.endswith(".gif"):
 					    try:
 						    # Заносим файл в таблицу для последующего сжатия и обработки
 						    cursor.execute(f"INSERT INTO `processing_queue` (`dir_id`, `filename`) VALUES ('{new_name}', '{file.filename}')")
