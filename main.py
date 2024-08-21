@@ -46,14 +46,14 @@ encrypter_password = "filesaver"
 
 # Функция, отвечающая за шифрование строки методом XOR
 def crypto_xor(message: str, secret: str) -> str:
-    out = ""
-    secret_len = len(secret)
-    for i in range(len(message)):
-        out += chr(ord(message[i]) ^ ord(secret[i % secret_len]))
-    return out
+	out = ""
+	secret_len = len(secret)
+	for i in range(len(message)):
+		out += chr(ord(message[i]) ^ ord(secret[i % secret_len]))
+	return out
 
 # Функция, отвечающая за сжатие строки байтовым способом
-def compress(data: str) -> str:
+def compress_str(data: str) -> str:
 	# Преобразуем шестнадцатеричную строку в байты
 	bytes_data = bytes.fromhex(data)
 	# Кодируем в base64 и убираем padding
@@ -116,7 +116,7 @@ async def upload_file(life: str, compress: bool, files: List[UploadFile]):
 			type_file = "video"
 			break
 		if accept_only_media and type_file != file:
-            continue
+			continue
 		async with aiofiles.open(f"uploaded/{new_name}/{file.filename}", 'wb') as out_file:
 				# Создаем все файлы
 				content = await file.read()  # async read
@@ -133,7 +133,7 @@ async def upload_file(life: str, compress: bool, files: List[UploadFile]):
 	connection.commit()
 	cursor.close()
 	# Возвращаем зашифрованное сжатое имя директории
-	return compress(encrypt_xor(str(new_name), encrypter_password))
+	return compress_str(encrypt_xor(str(new_name), encrypter_password))
 
 @v1_router.post("/add_files")
 async def add_files(id: str, files: List[UploadFile]):
@@ -167,16 +167,16 @@ async def add_files(id: str, files: List[UploadFile]):
 					type_file = "video"
 				if accept_only_media and type_file == file:
 					# Отсекаем не медиа файлы и создаем их
-                    continue
+					continue
 				async with aiofiles.open(f"{path}/{file.filename}", 'wb') as out_file:
 					content = await file.read()  # async read
 					await out_file.write(content)  # async write
-                    if type_file != file and not file.filename.endswith(".gif"):
-					    try:
-						    # Заносим файл в таблицу для последующего сжатия и обработки
-						    cursor.execute(f"INSERT INTO `processing_queue` (`dir_id`, `filename`) VALUES ('{new_name}', '{file.filename}')")
-					    except:
-						    pass
+					if type_file != file and not file.filename.endswith(".gif"):
+						try:
+							# Заносим файл в таблицу для последующего сжатия и обработки
+							cursor.execute(f"INSERT INTO `processing_queue` (`dir_id`, `filename`) VALUES ('{new_name}', '{file.filename}')")
+						except:
+							pass
 			# Коммитим изменения в базу и закрываем текущий курсор
 			connection.commit()
 			cursor.close()
