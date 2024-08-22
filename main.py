@@ -108,14 +108,14 @@ async def upload_file(life: str, compress: bool, files: List[UploadFile]):
 	async with aiofiles.open(f"uploaded/{new_name}/life.txt", 'w') as out_file:
 		await out_file.write(life)
 	for file in files:
+		print(1)
 		# Создаем файлы
 		type_file = "file"
 		if file.filename.endswith(tuple(image_formats)):
 			type_file = "image"
 		if file.filename.endswith(tuple(video_formats)):
 			type_file = "video"
-			break
-		if accept_only_media and type_file != file:
+		if accept_only_media and type_file == "file":
 			continue
 		async with aiofiles.open(f"uploaded/{new_name}/{file.filename}", 'wb') as out_file:
 				# Создаем все файлы
@@ -160,18 +160,18 @@ async def add_files(id: str, files: List[UploadFile]):
 				# Дозагружаем файлы
 				type_file = "file"
 				# Проверка, что файл - изображение
-				if ext in file.filename.endswith(tuple(image_formats)):
+				if file.filename.endswith(tuple(image_formats)):
 					type_file = "image"
 				# Проверка, что файл - видео
-				if ext in file.filename.endswith(tuple(video_formats)):
+				if file.filename.endswith(tuple(video_formats)):
 					type_file = "video"
-				if accept_only_media and type_file == file:
+				if accept_only_media and type_file == "file":
 					# Отсекаем не медиа файлы и создаем их
 					continue
 				async with aiofiles.open(f"{path}/{file.filename}", 'wb') as out_file:
 					content = await file.read()  # async read
 					await out_file.write(content)  # async write
-					if type_file != file and not file.filename.endswith(".gif"):
+					if type_file != "file" and not file.filename.endswith(".gif"):
 						try:
 							# Заносим файл в таблицу для последующего сжатия и обработки
 							cursor.execute(f"INSERT INTO `processing_queue` (`dir_id`, `filename`) VALUES ('{new_name}', '{file.filename}')")
@@ -281,6 +281,7 @@ async def get_file(id: str, file_name: str):
 	if id.isnumeric() == False:
 		# Если ID передан зашифрованынй - расшифровываем
 		id = decrypt_xor(decompress(str(id)), encrypter_password)
+	print(id)
 	# Формируем путь для более удобной работы
 	path = f"uploaded/{id}/{file_name}"
 	if os.path.isfile(path):
@@ -288,7 +289,7 @@ async def get_file(id: str, file_name: str):
 		return FileResponse(path=path, filename=file_name)
 	else:
 		# Если файла нет, возвращаем ошибку
-		return JSONResponse(status_code=404, content="Error")
+		return JSONResponse(status_code=404, content="File is not exists")
 
 @v1_router.get("/delete_dir")
 async def delete_dir(id: str):
@@ -308,6 +309,32 @@ async def delete_dir(id: str):
 			# Показываем и возвращаем ошибку
 			print(e)
 			return JSONResponse(status_code=404, content="Error")
+
+@v1_router.delete("/delete_file")
+async def delete_file(id: str, filename: str):
+	# Удаление директории
+
+	# Расшифровываем переданный ID
+	id = decrypt_xor(decompress(str(id)), encrypter_password)
+	# Формируем путь для более удобной работы
+	path = f"uploaded/{id}"
+	if path != "uploaded/":
+		if os.path.isdir(path):
+			file_path = f"{path}/{filename}"
+			if os.path.isfile(file_path):
+				try:
+					# Удаляем директорию
+					os.remove(file_path)
+					# Возвращаем статус 200
+					return JSONResponse(status_code=200, content="Succesfull")
+				except Exception as e:
+					# Показываем и возвращаем ошибку
+					print(e)
+					return JSONResponse(status_code=404, content="Error")
+			else:
+				return JSONResponse(status_code=402, content="File is not exists")
+		else:
+			return JSONResponse(status_code=401, content="Directory is not exists")
 
 @v1_router.get("/get_files")
 async def get_files(id: str):
